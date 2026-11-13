@@ -1,0 +1,142 @@
+package main
+
+import (
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"syscall"
+)
+
+// scanError presents a concise message while preserving the underlying cause for error inspection.
+type scanError struct {
+	message string
+	cause   error
+}
+
+func (err *scanError) Error() string { return err.message }
+
+func (err *scanError) Unwrap() error { return err.cause }
+
+func newScanError(action, path string, cause error) error {
+	return &scanError{
+		message: fmt.Sprintf("%s %q: %s", action, path, scanErrorReason(cause)),
+		cause:   cause,
+	}
+}
+
+// scanErrorReason returns a concise reason for the error, if known.
+func scanErrorReason(err error) string {
+	switch {
+	case errors.Is(err, os.ErrNotExist):
+		return "no such file or directory"
+	case errors.Is(err, os.ErrPermission):
+		return "permission denied"
+	case errors.Is(err, syscall.ENOTDIR):
+		return "not a directory"
+	}
+
+	if pathErr, ok := errors.AsType[*os.PathError](err); ok {
+		return pathErr.Err.Error()
+	}
+
+	return err.Error()
+}
+
+// scanDirectory builds a tree rooted at the provided directory.
+func scanDirectory(targetDir string, options Options) (*Node, error) {
+	if targetDir == "" {
+		return nil, fmt.Errorf("target directory must not be empty")
+	}
+
+	absolutePath, err := filepath.Abs(targetDir)
+	if err != nil {
+		return nil, newScanError("cannot resolve target directory", targetDir, err)
+	}
+
+	info, err := os.Stat(absolutePath)
+	if err != nil {
+		return nil, newScanError("cannot access target directory", absolutePath, err)
+	}
+	if !info.IsDir() {
+		return nil, fmt.Errorf("target %q is not a directory", absolutePath)
+	}
+
+	children, err := scanChildren(absolutePath, ".", options)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Node{
+		Name:         filepath.Base(absolutePath),
+		RelativePath: ".",
+		Kind:         KindDirectory,
+		Children:     children,
+	}, nil
+}
+
+// scanChildren reads a directory and recursively builds its child nodes.
+// relativePath uses native filesystem separators during traversal.
+func scanChildren(
+	directoryPath,
+	relativePath string,
+	options Options,
+) ([]*Node, error) {
+	entries, err := readDirectoryEntries(directoryPath)
+	if err != nil {
+		return nil, err
+	}
+
+	children := make([]*Node, 0, len(entries))
+
+	for _, entry := range entries {
+		childRelativePath := filepath.Join(relativePath, entry.Name())
+
+		node := &Node{
+			Name:         entry.Name(),
+			RelativePath: filepath.ToSlash(childRelativePath),
+			Kind:         KindFile,
+		}
+
+		switch {
+		case entry.Type()&os.ModeSymlink != 0:
+			node.Kind = KindSymlink
+
+		case entry.IsDir():
+			node.Kind = KindDirectory
+
+			childPath := filepath.Join(directoryPath, entry.Name())
+
+			node.Children, err = scanChildren(
+				childPath,
+				childRelativePath,
+				options,
+			)
+
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		children = append(children, node)
+	}
+
+	return children, nil
+}
+
+// readDirectoryEntries preserves filesystem enumeration order.
+// The directory handle closes before recursive scanning begins.
+func readDirectoryEntries(directoryPath string) ([]os.DirEntry, error) {
+	directory, err := os.Open(directoryPath)
+	if err != nil {
+		return nil, newScanError("cannot access directory", directoryPath, err)
+	}
+	defer directory.Close()
+
+	entries, err := directory.ReadDir(-1)
+	if err != nil {
+		return nil, newScanError("cannot read directory", directoryPath, err)
+	}
+
+	return entries, nil
+}

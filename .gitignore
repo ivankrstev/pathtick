@@ -1,0 +1,52 @@
+# Build artifacts
+/bin/
+/dist/
+/build/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+
+# Go test and coverage files
+*.out
+coverage/
+coverage.txt
+coverage.html
+coverage.prof
+cpu.prof
+mem.prof
+
+# Go workspace (if not intentionally shared)
+go.work
+go.work.sum
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+/tmp/
+*.tmp
+*.log
+
+# PathTick generated test data and exports
+/pathtick-test/
+/test-output/
+/pathtick.md
+/pathtick.html
+/PathTick.md
+/PathTick.html
