@@ -1,16 +1,17 @@
-package main
+package cli
 
 import (
 	"errors"
 	"fmt"
 	"io"
 
+	"github.com/ivankrstev/pathtick/internal/app"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
-func newRootCmd() *cobra.Command {
-	options := DefaultOptions()
+func NewRootCmd() *cobra.Command {
+	options := app.DefaultOptions()
 
 	format := string(options.Format)
 
@@ -26,7 +27,7 @@ func newRootCmd() *cobra.Command {
 				options.TargetDir = args[0]
 			}
 
-			options.Format = OutputFormat(format)
+			options.Format = app.OutputFormat(format)
 
 			// Reject explicit file-output options when stdout mode is enabled.
 			if options.Stdout {
@@ -42,7 +43,7 @@ func newRootCmd() *cobra.Command {
 		},
 
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return run(options, cmd.OutOrStdout())
+			return app.Run(options, cmd.OutOrStdout())
 		},
 	}
 

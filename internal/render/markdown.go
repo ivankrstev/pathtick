@@ -1,11 +1,13 @@
-package main
+package render
 
 import (
 	"errors"
 	"strings"
+
+	"github.com/ivankrstev/pathtick/internal/tree"
 )
 
-func renderMarkdown(root *Node, options Options) ([]byte, error) {
+func RenderMarkdown(root *tree.Node, title string) ([]byte, error) {
 	if root == nil {
 		return nil, errors.New("cannot render an empty tree")
 	}
@@ -14,7 +16,7 @@ func renderMarkdown(root *Node, options Options) ([]byte, error) {
 
 	// add title
 	output.WriteString("# ")
-	output.WriteString(options.Title)
+	output.WriteString(title)
 	output.WriteByte('\n')
 	output.WriteByte('\n')
 
@@ -23,7 +25,7 @@ func renderMarkdown(root *Node, options Options) ([]byte, error) {
 	return []byte(output.String()), nil
 }
 
-func writeMarkdownNode(output *strings.Builder, node *Node, depth int) {
+func writeMarkdownNode(output *strings.Builder, node *tree.Node, depth int) {
 	output.WriteString(strings.Repeat("  ", depth))
 	output.WriteString("- [ ] ")
 	output.WriteString(node.Name)

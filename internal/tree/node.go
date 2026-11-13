@@ -1,4 +1,4 @@
-package main
+package tree
 
 // EntryKind identifies whether a node is a directory, file, or symbolic link.
 type EntryKind string

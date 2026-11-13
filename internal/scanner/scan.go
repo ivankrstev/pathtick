@@ -1,4 +1,4 @@
-package main
+package scanner
 
 import (
 	"errors"
@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
+
+	"github.com/ivankrstev/pathtick/internal/tree"
 )
 
 // scanError presents a concise message while preserving the underlying cause for error inspection.
@@ -43,8 +45,8 @@ func scanErrorReason(err error) string {
 	return err.Error()
 }
 
-// scanDirectory builds a tree rooted at the provided directory.
-func scanDirectory(targetDir string, options Options) (*Node, error) {
+// Scan builds a tree rooted at the provided directory.
+func Scan(targetDir string) (*tree.Node, error) {
 	if targetDir == "" {
 		return nil, fmt.Errorf("target directory must not be empty")
 	}
@@ -62,15 +64,15 @@ func scanDirectory(targetDir string, options Options) (*Node, error) {
 		return nil, fmt.Errorf("target %q is not a directory", absolutePath)
 	}
 
-	children, err := scanChildren(absolutePath, ".", options)
+	children, err := scanChildren(absolutePath, ".")
 	if err != nil {
 		return nil, err
 	}
 
-	return &Node{
+	return &tree.Node{
 		Name:         filepath.Base(absolutePath),
 		RelativePath: ".",
-		Kind:         KindDirectory,
+		Kind:         tree.KindDirectory,
 		Children:     children,
 	}, nil
 }
@@ -80,37 +82,35 @@ func scanDirectory(targetDir string, options Options) (*Node, error) {
 func scanChildren(
 	directoryPath,
 	relativePath string,
-	options Options,
-) ([]*Node, error) {
+) ([]*tree.Node, error) {
 	entries, err := readDirectoryEntries(directoryPath)
 	if err != nil {
 		return nil, err
 	}
 
-	children := make([]*Node, 0, len(entries))
+	children := make([]*tree.Node, 0, len(entries))
 
 	for _, entry := range entries {
 		childRelativePath := filepath.Join(relativePath, entry.Name())
 
-		node := &Node{
+		node := &tree.Node{
 			Name:         entry.Name(),
 			RelativePath: filepath.ToSlash(childRelativePath),
-			Kind:         KindFile,
+			Kind:         tree.KindFile,
 		}
 
 		switch {
 		case entry.Type()&os.ModeSymlink != 0:
-			node.Kind = KindSymlink
+			node.Kind = tree.KindSymlink
 
 		case entry.IsDir():
-			node.Kind = KindDirectory
+			node.Kind = tree.KindDirectory
 
 			childPath := filepath.Join(directoryPath, entry.Name())
 
 			node.Children, err = scanChildren(
 				childPath,
 				childRelativePath,
-				options,
 			)
 
 			if err != nil {

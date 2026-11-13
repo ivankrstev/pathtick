@@ -1,4 +1,4 @@
-package main
+package output
 
 import (
 	"errors"
@@ -9,18 +9,18 @@ import (
 	"strings"
 )
 
-// renderedFile holds rendered content and the extension used for its output filename.
-type renderedFile struct {
-	extension string
-	data      []byte
+// File holds rendered content and the extension used for its output filename.
+type File struct {
+	Extension string
+	Data      []byte
 }
 
-// writeOutputFiles writes the rendered files, refusing to replace existing files unless overwrite is true.
-func writeOutputFiles(
+// WriteFiles writes the rendered files, refusing to replace existing files unless overwrite is true.
+func WriteFiles(
 	outputDir string,
 	baseName string,
 	overwrite bool,
-	outputs []renderedFile,
+	outputs []File,
 ) error {
 	if len(outputs) == 0 {
 		return errors.New("no output files to write")
@@ -40,9 +40,9 @@ func writeOutputFiles(
 	seenTargets := make(map[string]struct{}, len(outputs))
 
 	for _, output := range outputs {
-		extension := strings.TrimPrefix(output.extension, ".")
+		extension := strings.TrimPrefix(output.Extension, ".")
 		if extension == "" || filepath.Base(extension) != extension {
-			return fmt.Errorf("invalid output file extension %q", output.extension)
+			return fmt.Errorf("invalid output file extension %q", output.Extension)
 		}
 
 		path := filepath.Join(outputDir, baseName+"."+extension)
@@ -66,7 +66,7 @@ func writeOutputFiles(
 
 	createdPaths := make([]string, 0, len(targets))
 	for index, output := range outputs {
-		if err := writeOutputFile(targets[index], output.data, overwrite); err != nil {
+		if err := writeOutputFile(targets[index], output.Data, overwrite); err != nil {
 			if !overwrite {
 				for _, path := range createdPaths {
 					_ = os.Remove(path)
