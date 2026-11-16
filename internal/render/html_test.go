@@ -94,3 +94,30 @@ func TestRenderHTMLProgressHelp(t *testing.T) {
 		}
 	}
 }
+
+func TestRenderHTMLIncludesAutosaveScript(t *testing.T) {
+	root := &tree.Node{
+		Name:         "project",
+		RelativePath: ".",
+		Children: []*tree.Node{
+			{Name: "README.md", RelativePath: "README.md"},
+		},
+	}
+
+	got, err := render.RenderHTML(root, "Project")
+	if err != nil {
+		t.Fatalf("RenderHTML() error = %v", err)
+	}
+
+	for _, want := range []string{
+		`<label data-relative-path="README.md"><input type="checkbox"> README.md</label>`,
+		`window.localStorage.getItem(storageKey)`,
+		`checkbox.checked = progress[path] === true;`,
+		`checkbox.addEventListener("change", () => {`,
+		`window.localStorage.setItem(storageKey, JSON.stringify(progress))`,
+	} {
+		if !strings.Contains(string(got), want) {
+			t.Errorf("RenderHTML() output does not contain %q:\n%s", want, got)
+		}
+	}
+}
