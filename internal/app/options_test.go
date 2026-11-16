@@ -30,13 +30,13 @@ func TestOptionsValidate(t *testing.T) {
 	validStdout.Stdout = true
 	validOverwrite := validDefaults
 	validOverwrite.Overwrite = true
+	validHTML := validDefaults
+	validHTML.Format = app.FormatHTML
+	validBoth := validDefaults
+	validBoth.Format = app.FormatBoth
 
 	emptyTarget := validDefaults
 	emptyTarget.TargetDir = ""
-	unsupportedHTML := validDefaults
-	unsupportedHTML.Format = app.FormatHTML
-	unsupportedBoth := validDefaults
-	unsupportedBoth.Format = app.FormatBoth
 	unsupportedUnknown := validDefaults
 	unsupportedUnknown.Format = "json"
 	stdoutAndOverwrite := validDefaults
@@ -66,14 +66,12 @@ func TestOptionsValidate(t *testing.T) {
 			wantErr: "target directory cannot be empty",
 		},
 		{
-			name:    "HTML is not implemented yet",
-			options: unsupportedHTML,
-			wantErr: "unsupported --format",
+			name:    "HTML format",
+			options: validHTML,
 		},
 		{
-			name:    "both formats are not implemented yet",
-			options: unsupportedBoth,
-			wantErr: "unsupported --format",
+			name:    "both formats",
+			options: validBoth,
 		},
 		{
 			name:    "unknown format",

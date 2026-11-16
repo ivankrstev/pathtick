@@ -45,12 +45,14 @@ func (options Options) Validate() error {
 	}
 
 	switch options.Format {
-	case FormatMarkdown:
+	case FormatMarkdown, FormatHTML, FormatBoth:
 	default:
 		return fmt.Errorf(
-			"unsupported --format %q: currently only %q is supported",
+			"unsupported --format %q: supported formats are %q, %q, and %q",
 			options.Format,
 			FormatMarkdown,
+			FormatHTML,
+			FormatBoth,
 		)
 	}
 

@@ -6,6 +6,6 @@
 | --title | String | Target directory’s name | Title shown in the document |
 | --output-name, -n | String | PathTick | Output filename stem; format supplies the extension |
 | --output-dir, -o | Directory path | . | Where exported files are saved |
-| --format, -f | md | md | Output format (currently only Markdown is supported) |
+| --format, -f | md, html, both | md | Export format |
 | --stdout | Boolean | false | Write the export to standard output |
 | --overwrite | Boolean | false | Allow replacing existing export files |

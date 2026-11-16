@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/ivankrstev/pathtick/internal/app"
@@ -35,6 +36,79 @@ func TestRunWritesMarkdownFile(t *testing.T) {
 		"  - [ ] README\\.md\n"
 	if string(got) != want {
 		t.Errorf("output file contents:\ngot:\n%q\nwant:\n%q", string(got), want)
+	}
+}
+
+func TestRunWritesHTMLFile(t *testing.T) {
+	projectDir := createProject(t)
+	outputDir := filepath.Join(t.TempDir(), "nested", "output")
+
+	options := app.DefaultOptions()
+	options.TargetDir = projectDir
+	options.Title = "A custom title"
+	options.OutputDir = outputDir
+	options.OutputBaseName = "checklist"
+	options.Format = app.FormatHTML
+
+	if err := app.Run(options, &bytes.Buffer{}); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	outputPath := filepath.Join(outputDir, "checklist.html")
+	got, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatalf("read HTML output: %v", err)
+	}
+
+	for _, want := range []string{
+		"<!doctype html>",
+		"<title>A custom title</title>",
+		"<h1>A custom title</h1>",
+		"<input type=\"checkbox\"> project",
+		"<input type=\"checkbox\"> README.md",
+	} {
+		if !strings.Contains(string(got), want) {
+			t.Errorf("HTML output does not contain %q:\n%s", want, got)
+		}
+	}
+}
+
+func TestRunWritesBothFormats(t *testing.T) {
+	projectDir := createProject(t)
+	outputDir := filepath.Join(t.TempDir(), "nested", "output")
+
+	options := app.DefaultOptions()
+	options.TargetDir = projectDir
+	options.Title = "A custom title"
+	options.OutputDir = outputDir
+	options.OutputBaseName = "checklist"
+	options.Format = app.FormatBoth
+
+	if err := app.Run(options, &bytes.Buffer{}); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	markdown, err := os.ReadFile(filepath.Join(outputDir, "checklist.md"))
+	if err != nil {
+		t.Fatalf("read Markdown output: %v", err)
+	}
+	if want := "# A custom title\n\n- [ ] project\n  - [ ] README\\.md\n"; string(markdown) != want {
+		t.Errorf("Markdown output = %q, want %q", string(markdown), want)
+	}
+
+	html, err := os.ReadFile(filepath.Join(outputDir, "checklist.html"))
+	if err != nil {
+		t.Fatalf("read HTML output: %v", err)
+	}
+	for _, want := range []string{
+		"<!doctype html>",
+		"<title>A custom title</title>",
+		"<input type=\"checkbox\"> project",
+		"<input type=\"checkbox\"> README.md",
+	} {
+		if !strings.Contains(string(html), want) {
+			t.Errorf("HTML output does not contain %q:\n%s", want, html)
+		}
 	}
 }
 

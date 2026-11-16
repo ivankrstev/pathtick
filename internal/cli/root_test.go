@@ -28,6 +28,94 @@ func TestRootCmdStdout(t *testing.T) {
 	}
 }
 
+func TestRootCmdHTMLToStdout(t *testing.T) {
+	projectDir := createProject(t)
+	command := cli.NewRootCmd()
+	var stdout strings.Builder
+	command.SetOut(&stdout)
+	command.SetArgs([]string{"--stdout", "--format", "html", projectDir})
+
+	if err := command.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	for _, want := range []string{
+		"<!doctype html>",
+		"<title>project</title>",
+		"<input type=\"checkbox\"> README.md",
+	} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Errorf("command stdout does not contain %q:\n%s", want, stdout.String())
+		}
+	}
+}
+
+func TestRootCmdHTMLFormat(t *testing.T) {
+	projectDir := createProject(t)
+	outputDir := t.TempDir()
+	command := cli.NewRootCmd()
+	command.SetArgs([]string{
+		"--format", "html",
+		"--output-dir", outputDir,
+		"--output-name", "checklist",
+		projectDir,
+	})
+
+	if err := command.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	outputPath := filepath.Join(outputDir, "checklist.html")
+	got, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatalf("read HTML output: %v", err)
+	}
+
+	for _, want := range []string{
+		"<!doctype html>",
+		"<title>project</title>",
+		"<input type=\"checkbox\"> README.md",
+	} {
+		if !strings.Contains(string(got), want) {
+			t.Errorf("HTML output does not contain %q:\n%s", want, got)
+		}
+	}
+}
+
+func TestRootCmdBothFormat(t *testing.T) {
+	projectDir := createProject(t)
+	outputDir := t.TempDir()
+	command := cli.NewRootCmd()
+	command.SetArgs([]string{
+		"--format", "both",
+		"--output-dir", outputDir,
+		"--output-name", "checklist",
+		projectDir,
+	})
+
+	if err := command.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	markdownPath := filepath.Join(outputDir, "checklist.md")
+	markdown, err := os.ReadFile(markdownPath)
+	if err != nil {
+		t.Fatalf("read Markdown output: %v", err)
+	}
+	if !strings.Contains(string(markdown), "# project\n") {
+		t.Errorf("Markdown output does not contain the project title:\n%s", markdown)
+	}
+
+	htmlPath := filepath.Join(outputDir, "checklist.html")
+	html, err := os.ReadFile(htmlPath)
+	if err != nil {
+		t.Fatalf("read HTML output: %v", err)
+	}
+	if !strings.Contains(string(html), "<title>project</title>") {
+		t.Errorf("HTML output does not contain the project title:\n%s", html)
+	}
+}
+
 func TestRootCmdRejectsOutputFlagsWithStdout(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -75,15 +163,28 @@ func TestRootCmdRejectsStdoutWithOverwrite(t *testing.T) {
 	}
 }
 
+func TestRootCmdRejectsStdoutWithBothFormats(t *testing.T) {
+	command := cli.NewRootCmd()
+	command.SetArgs([]string{"--stdout", "--format", "both"})
+
+	err := command.Execute()
+	if err == nil {
+		t.Fatal("Execute() error = nil, want an error for stdout with both formats")
+	}
+	if want := "--stdout cannot be used with --format=both"; !strings.Contains(err.Error(), want) {
+		t.Errorf("Execute() error = %q, want it to contain %q", err, want)
+	}
+}
+
 func TestRootCmdRejectsUnsupportedFormat(t *testing.T) {
 	command := cli.NewRootCmd()
-	command.SetArgs([]string{"--format", "html"})
+	command.SetArgs([]string{"--format", "json"})
 
 	err := command.Execute()
 	if err == nil {
 		t.Fatal("Execute() error = nil, want an error for an unsupported format")
 	}
-	if want := `unsupported --format "html"`; !strings.Contains(err.Error(), want) {
+	if want := `unsupported --format "json"`; !strings.Contains(err.Error(), want) {
 		t.Errorf("Execute() error = %q, want it to contain %q", err, want)
 	}
 }

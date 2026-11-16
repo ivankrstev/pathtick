@@ -50,7 +50,7 @@ func NewRootCmd() *cobra.Command {
 	flags := cmd.Flags()
 
 	// Formatting
-	flags.StringVarP(&format, "format", "f", string(options.Format), "Output format (currently only md is supported)")
+	flags.StringVarP(&format, "format", "f", string(options.Format), "Output format: md, html, or both")
 	flags.StringVarP(&options.Title, "title", "t", options.Title, "Title shown in the exported document (default: derived from the target directory)")
 
 	// Output
