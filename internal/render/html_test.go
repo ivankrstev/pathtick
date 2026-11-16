@@ -29,12 +29,12 @@ func TestRenderHTMLNestedTree(t *testing.T) {
 
 	wantChecklist := "    <h1>Sample Project</h1>\n" +
 		"    <ul>\n" +
-		"      <li><label><input type=\"checkbox\"> repo</label>\n" +
+		"      <li><label data-relative-path=\".\"><input type=\"checkbox\"> repo</label>\n" +
 		"        <ul>\n" +
-		"          <li><label><input type=\"checkbox\"> README.md</label></li>\n" +
-		"          <li><label><input type=\"checkbox\"> src</label>\n" +
+		"          <li><label data-relative-path=\"README.md\"><input type=\"checkbox\"> README.md</label></li>\n" +
+		"          <li><label data-relative-path=\"src\"><input type=\"checkbox\"> src</label>\n" +
 		"            <ul>\n" +
-		"              <li><label><input type=\"checkbox\"> main.go</label></li>\n" +
+		"              <li><label data-relative-path=\"src/main.go\"><input type=\"checkbox\"> main.go</label></li>\n" +
 		"            </ul>\n" +
 		"          </li>\n" +
 		"        </ul>\n" +
@@ -71,5 +71,26 @@ func TestRenderHTMLEscapesTitleAndFileNames(t *testing.T) {
 	escapedName := `report &lt;draft&gt; &amp; &#34;notes&#34; &#39;final&#39;.md`
 	if !strings.Contains(string(got), escapedName) {
 		t.Errorf("output does not contain escaped file name %q:\n%s", escapedName, got)
+	}
+}
+
+func TestRenderHTMLProgressHelp(t *testing.T) {
+	got, err := render.RenderHTML(&tree.Node{Name: "project"}, "Project")
+	if err != nil {
+		t.Fatalf("RenderHTML() error = %v", err)
+	}
+
+	for _, want := range []string{
+		`<button id="progress-help-toggle" type="button" aria-label="Progress info" aria-expanded="false" aria-controls="progress-help-panel">?</button>`,
+		`<aside id="progress-help-panel" aria-labelledby="progress-help-title" hidden>`,
+		"Progress is saved in this browser for this HTML file.",
+		`.progress-help { position: fixed; right: 1rem; bottom: 1rem;`,
+		`#progress-help-panel { position: absolute;`,
+		`#progress-help-toggle:hover::after, #progress-help-toggle:focus-visible::after`,
+		`font-size: 1.5rem;`,
+	} {
+		if !strings.Contains(string(got), want) {
+			t.Errorf("RenderHTML() output does not contain %q:\n%s", want, got)
+		}
 	}
 }
