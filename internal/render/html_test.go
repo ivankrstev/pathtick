@@ -83,7 +83,7 @@ func TestRenderHTMLProgressHelp(t *testing.T) {
 	for _, want := range []string{
 		`<button id="progress-help-toggle" type="button" aria-label="Progress info" aria-expanded="false" aria-controls="progress-help-panel">?</button>`,
 		`<aside id="progress-help-panel" aria-labelledby="progress-help-title" hidden>`,
-		"Progress is saved in this browser for this HTML file.",
+		"Progress autosaves in this browser for this HTML file.",
 		`.progress-help { position: fixed; right: 1rem; bottom: 1rem;`,
 		`#progress-help-panel { position: absolute;`,
 		`#progress-help-toggle:hover::after, #progress-help-toggle:focus-visible::after`,

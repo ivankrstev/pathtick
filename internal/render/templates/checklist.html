@@ -27,6 +27,8 @@
     .progress-help-header { display: flex; align-items: start; justify-content: space-between; gap: 1rem; }
     .progress-help-header h2 { margin: 0; font-size: 1rem; }
     #progress-help-panel p { margin-bottom: 0; }
+    .progress-help-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
+    .progress-help-actions button { cursor: pointer; border: 1px solid #777; border-radius: 0.3rem; background: #f7f7f7; color: #222; padding: 0.45rem 0.65rem; font: inherit; }
   </style>
 </head>
 <body>
@@ -44,7 +46,12 @@
         <h2 id="progress-help-title" tabindex="-1">About saved progress</h2>
         <button id="progress-help-close" type="button">Close</button>
       </div>
-      <p>Progress is saved in this browser for this HTML file. The HTML file itself is not changed. Opening it in another browser or moving it to a different location may show a separate checklist.</p>
+      <p>Progress autosaves in this browser for this HTML file. Use Export JSON to carry it to another browser, then import that file there. The HTML file itself is not changed.</p>
+      <div class="progress-help-actions">
+        <button id="progress-export" type="button">Export JSON</button>
+        <button id="progress-import" type="button">Import JSON</button>
+        <input id="progress-import-file" type="file" accept=".json,application/json" hidden>
+      </div>
     </aside>
   </div>
   <script>
@@ -52,12 +59,30 @@
       const storageKey = "pathtick:checklist:" + window.location.pathname;
       const status = document.getElementById("save-status");
       const labels = document.querySelectorAll("label[data-relative-path]");
-      const progress = Object.create(null);
+      let progress = Object.create(null);
       const helpToggle = document.getElementById("progress-help-toggle");
       const helpPanel = document.getElementById("progress-help-panel");
       const helpTitle = document.getElementById("progress-help-title");
       const helpClose = document.getElementById("progress-help-close");
+      const progressExport = document.getElementById("progress-export");
+      const progressImport = document.getElementById("progress-import");
+      const progressImportFile = document.getElementById("progress-import-file");
+      const entries = Array.from(labels, (label) => ({
+        checkbox: label.querySelector("input[type=checkbox]"),
+        path: label.dataset.relativePath,
+      }));
       let storageAvailable = true;
+
+      const saveProgress = () => {
+        try {
+          window.localStorage.setItem(storageKey, JSON.stringify(progress));
+          status.textContent = "Progress saved in this browser.";
+          return true;
+        } catch {
+          status.textContent = "Browser storage is unavailable; progress will not persist.";
+          return false;
+        }
+      };
 
       const closeHelp = () => {
         helpPanel.hidden = true;
@@ -103,20 +128,92 @@
         status.textContent = "Browser storage is unavailable; progress will not persist.";
       }
 
-      for (const label of labels) {
-        const checkbox = label.querySelector("input[type=checkbox]");
-        const path = label.dataset.relativePath;
+      for (const { checkbox, path } of entries) {
         checkbox.checked = progress[path] === true;
         checkbox.addEventListener("change", () => {
           progress[path] = checkbox.checked;
-          try {
-            window.localStorage.setItem(storageKey, JSON.stringify(progress));
-            status.textContent = "Progress saved in this browser.";
-          } catch {
-            status.textContent = "Browser storage is unavailable; progress will not persist.";
-          }
+          saveProgress();
         });
       }
+
+      progressExport.addEventListener("click", () => {
+        try {
+          const items = Object.create(null);
+          for (const { checkbox, path } of entries) {
+            items[path] = checkbox.checked;
+          }
+
+          const data = {
+            format: "pathtick-progress",
+            version: 1,
+            items,
+          };
+          const blob = new Blob([JSON.stringify(data, null, 2) + "\n"], {
+            type: "application/json",
+          });
+          const url = window.URL.createObjectURL(blob);
+          const download = document.createElement("a");
+          download.href = url;
+          download.download = "pathtick-progress.json";
+          download.hidden = true;
+          document.body.appendChild(download);
+          download.click();
+          download.remove();
+          window.setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+          status.textContent = "Progress exported to pathtick-progress.json.";
+        } catch {
+          status.textContent = "Could not export progress JSON.";
+        }
+      });
+
+      progressImport.addEventListener("click", () => progressImportFile.click());
+      progressImportFile.addEventListener("change", async () => {
+        const file = progressImportFile.files && progressImportFile.files[0];
+        if (!file) {
+          return;
+        }
+
+        try {
+          const data = JSON.parse(await file.text());
+          if (
+            !data ||
+            typeof data !== "object" ||
+            Array.isArray(data) ||
+            data.format !== "pathtick-progress" ||
+            data.version !== 1 ||
+            !data.items ||
+            typeof data.items !== "object" ||
+            Array.isArray(data.items)
+          ) {
+            throw new Error("unsupported progress file");
+          }
+
+          const importedItems = Object.create(null);
+          for (const [path, checked] of Object.entries(data.items)) {
+            if (typeof checked !== "boolean") {
+              throw new Error("progress values must be booleans");
+            }
+            importedItems[path] = checked;
+          }
+
+          progress = Object.create(null);
+          for (const { checkbox, path } of entries) {
+            const checked = importedItems[path] === true;
+            progress[path] = checked;
+            checkbox.checked = checked;
+          }
+
+          if (saveProgress()) {
+            status.textContent = "Progress imported and saved in this browser.";
+          } else {
+            status.textContent = "Progress imported; browser storage is unavailable.";
+          }
+        } catch {
+          status.textContent = "Could not import progress. Choose a valid PathTick progress JSON file.";
+        } finally {
+          progressImportFile.value = "";
+        }
+      });
     })();
   </script>
 </body>
