@@ -13,22 +13,47 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{.Title}}</title>
   <style>
-    body { font-family: system-ui, sans-serif; line-height: 1.5; margin: 2rem auto; max-width: 52rem; padding: 0 1rem 5rem; }
+    :root {
+      color-scheme: light dark;
+      --page-bg: #fff;
+      --text-color: #222;
+      --muted-color: #555;
+      --surface-color: #fff;
+      --surface-alt: #f7f7f7;
+      --border-color: #aaa;
+      --button-border: #777;
+      --shadow-color: rgba(0, 0, 0, 0.2);
+      --panel-shadow: rgba(0, 0, 0, 0.25);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --page-bg: #181a1b;
+        --text-color: #e8e6e3;
+        --muted-color: #b8b3aa;
+        --surface-color: #242628;
+        --surface-alt: #303336;
+        --border-color: #62676b;
+        --button-border: #737a7e;
+        --shadow-color: rgba(0, 0, 0, 0.55);
+        --panel-shadow: rgba(0, 0, 0, 0.5);
+      }
+    }
+    body { background: var(--page-bg); color: var(--text-color); font-family: system-ui, sans-serif; line-height: 1.5; margin: 2rem auto; max-width: 52rem; padding: 0 1rem 5rem; }
     ul { list-style: none; padding-left: 1.5rem; }
     li { margin: 0.25rem 0; }
     label { white-space: pre-wrap; }
     input { margin-right: 0.5rem; }
-    #save-status { color: #555; font-size: 0.9rem; }
+    #save-status { color: var(--muted-color); font-size: 0.9rem; }
     .progress-help { position: fixed; right: 1rem; bottom: 1rem; z-index: 1000; }
-    #progress-help-toggle { position: relative; display: grid; place-items: center; width: 2.75rem; height: 2.75rem; padding: 0; cursor: pointer; border: 1px solid #555; border-radius: 50%; background: #fff; color: #222; font: inherit; font-size: 1.5rem; font-weight: 700; box-shadow: 0 0.2rem 0.8rem rgba(0, 0, 0, 0.2); }
-    #progress-help-toggle::after { content: attr(aria-label); position: absolute; right: calc(100% + 0.65rem); bottom: 50%; transform: translateY(50%); visibility: hidden; opacity: 0; pointer-events: none; white-space: nowrap; border-radius: 0.3rem; background: #222; color: #fff; padding: 0.4rem 0.6rem; font-size: 0.85rem; font-weight: 400; transition: opacity 0.1s ease; }
+    #progress-help-toggle { position: relative; display: grid; place-items: center; width: 2.75rem; height: 2.75rem; padding: 0; cursor: pointer; border: 1px solid var(--button-border); border-radius: 50%; background: var(--surface-color); color: var(--text-color); font: inherit; font-size: 1.5rem; font-weight: 700; box-shadow: 0 0.2rem 0.8rem var(--shadow-color); }
+    #progress-help-toggle::after { content: attr(aria-label); position: absolute; right: calc(100% + 0.65rem); bottom: 50%; transform: translateY(50%); visibility: hidden; opacity: 0; pointer-events: none; white-space: nowrap; border-radius: 0.3rem; background: var(--text-color); color: var(--page-bg); padding: 0.4rem 0.6rem; font-size: 0.85rem; font-weight: 400; transition: opacity 0.1s ease; }
     #progress-help-toggle:hover::after, #progress-help-toggle:focus-visible::after { visibility: visible; opacity: 1; }
-    #progress-help-panel { position: absolute; right: 0; bottom: calc(100% + 0.5rem); box-sizing: border-box; width: min(22rem, calc(100vw - 2rem)); max-height: min(60vh, 24rem); overflow: auto; border: 1px solid #aaa; border-radius: 0.5rem; background: #fff; color: #222; padding: 1rem; box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.25); }
+    #progress-help-panel { position: absolute; right: 0; bottom: calc(100% + 0.5rem); box-sizing: border-box; width: min(22rem, calc(100vw - 2rem)); max-height: min(60vh, 24rem); overflow: auto; border: 1px solid var(--border-color); border-radius: 0.5rem; background: var(--surface-color); color: var(--text-color); padding: 1rem; box-shadow: 0 0.5rem 1.5rem var(--panel-shadow); }
     .progress-help-header { display: flex; align-items: start; justify-content: space-between; gap: 1rem; }
     .progress-help-header h2 { margin: 0; font-size: 1rem; }
     #progress-help-panel p { margin-bottom: 0; }
     .progress-help-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
-    .progress-help-actions button { cursor: pointer; border: 1px solid #777; border-radius: 0.3rem; background: #f7f7f7; color: #222; padding: 0.45rem 0.65rem; font: inherit; }
+    .progress-help-actions button { cursor: pointer; border: 1px solid var(--button-border); border-radius: 0.3rem; background: var(--surface-alt); color: var(--text-color); padding: 0.45rem 0.65rem; font: inherit; }
   </style>
 </head>
 <body>
