@@ -13,7 +13,7 @@ import (
 
 // run scans the target, renders the requested output, and writes it to stdout or files.
 func Run(options Options, stdout io.Writer) error {
-	root, err := scanner.Scan(options.TargetDir)
+	root, err := scanner.ScanWithDepth(options.TargetDir, options.Depth)
 	if err != nil {
 		return err
 	}

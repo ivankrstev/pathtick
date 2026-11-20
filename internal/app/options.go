@@ -17,6 +17,7 @@ const (
 // Options contains the settings for one scan and export.
 type Options struct {
 	TargetDir      string
+	Depth          int
 	Title          string
 	OutputDir      string
 	OutputBaseName string
@@ -35,6 +36,7 @@ func DefaultOptions() Options {
 		Format:         FormatMarkdown,
 		Stdout:         false,
 		Overwrite:      false,
+		Depth:          -1,
 	}
 }
 
@@ -42,6 +44,9 @@ func DefaultOptions() Options {
 func (options Options) Validate() error {
 	if options.TargetDir == "" {
 		return errors.New("target directory cannot be empty")
+	}
+	if options.Depth < -1 {
+		return fmt.Errorf("--depth must be -1 or greater, got %d", options.Depth)
 	}
 
 	switch options.Format {

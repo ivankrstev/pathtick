@@ -47,6 +47,16 @@ func scanErrorReason(err error) string {
 
 // Scan builds a tree rooted at the provided directory.
 func Scan(targetDir string) (*tree.Node, error) {
+	return ScanWithDepth(targetDir, -1)
+}
+
+// ScanWithDepth builds a tree rooted at the provided directory, including entries
+// through maxDepth. The root is at depth 0; -1 scans without a depth limit.
+func ScanWithDepth(targetDir string, maxDepth int) (*tree.Node, error) {
+	if maxDepth < -1 {
+		return nil, fmt.Errorf("maximum depth must be -1 or greater, got %d", maxDepth)
+	}
+
 	if targetDir == "" {
 		return nil, fmt.Errorf("target directory must not be empty")
 	}
@@ -64,7 +74,7 @@ func Scan(targetDir string) (*tree.Node, error) {
 		return nil, fmt.Errorf("target %q is not a directory", absolutePath)
 	}
 
-	children, err := scanChildren(absolutePath, ".")
+	children, err := scanChildren(absolutePath, ".", 0, maxDepth)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +92,13 @@ func Scan(targetDir string) (*tree.Node, error) {
 func scanChildren(
 	directoryPath,
 	relativePath string,
+	directoryDepth,
+	maxDepth int,
 ) ([]*tree.Node, error) {
+	if maxDepth >= 0 && directoryDepth >= maxDepth {
+		return nil, nil
+	}
+
 	entries, err := readDirectoryEntries(directoryPath)
 	if err != nil {
 		return nil, err
@@ -111,6 +127,8 @@ func scanChildren(
 			node.Children, err = scanChildren(
 				childPath,
 				childRelativePath,
+				directoryDepth+1,
+				maxDepth,
 			)
 
 			if err != nil {

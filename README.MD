@@ -9,3 +9,4 @@
 | --format, -f | md, html, both | md | Export format |
 | --stdout | Boolean | false | Write the export to standard output |
 | --overwrite | Boolean | false | Allow replacing existing export files |
+| --depth, -d | Integer; -1 means unlimited | -1 | Maximum directory traversal depth |

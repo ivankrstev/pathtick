@@ -10,6 +10,7 @@ import (
 func TestDefaultOptions(t *testing.T) {
 	want := app.Options{
 		TargetDir:      ".",
+		Depth:          -1,
 		Title:          "",
 		OutputDir:      ".",
 		OutputBaseName: "PathTick",

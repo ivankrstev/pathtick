@@ -59,6 +59,9 @@ func NewRootCmd() *cobra.Command {
 	flags.BoolVar(&options.Stdout, "stdout", options.Stdout, "Write output to stdout instead of files")
 	flags.BoolVar(&options.Overwrite, "overwrite", options.Overwrite, "Overwrite existing output files")
 
+	// Traversal
+	flags.IntVarP(&options.Depth, "depth", "d", options.Depth, "Maximum directory traversal depth; -1 means unlimited")
+
 	cmd.SetHelpFunc(func(cmd *cobra.Command, _ []string) {
 		out := cmd.OutOrStdout()
 		helpFlags := cmd.Flags()
@@ -85,6 +88,13 @@ func NewRootCmd() *cobra.Command {
 			"output-name",
 			"stdout",
 			"overwrite",
+		)
+
+		printFlagGroup(
+			out,
+			"Traversal",
+			helpFlags,
+			"depth",
 		)
 
 		printFlagGroup(
