@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sort"
+	"strings"
 
 	"github.com/ivankrstev/pathtick/internal/output"
 	"github.com/ivankrstev/pathtick/internal/render"
@@ -15,6 +17,9 @@ import (
 func Run(options Options, stdout io.Writer) error {
 	root, err := scanner.ScanWithDepth(options.TargetDir, options.Depth)
 	if err != nil {
+		return err
+	}
+	if err := sortTree(root, options.Sort); err != nil {
 		return err
 	}
 
@@ -46,6 +51,50 @@ func Run(options Options, stdout io.Writer) error {
 		options.Overwrite,
 		outputs,
 	)
+}
+
+// sortTree orders each directory's children by name and applies the same order recursively.
+func sortTree(root *tree.Node, order SortOrder) error {
+	var less func(i, j int) bool
+	switch order {
+	case SortNone:
+		return nil
+	case SortAscending:
+		less = func(i, j int) bool {
+			return compareNames(root.Children[i].Name, root.Children[j].Name) < 0
+		}
+	case SortDescending:
+		less = func(i, j int) bool {
+			return compareNames(root.Children[i].Name, root.Children[j].Name) > 0
+		}
+	default:
+		return fmt.Errorf(
+			"unsupported --sort %q: supported values are %q, %q, and %q",
+			order,
+			SortNone,
+			SortAscending,
+			SortDescending,
+		)
+	}
+
+	sort.SliceStable(root.Children, less)
+	for _, child := range root.Children {
+		if err := sortTree(child, order); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// compareNames compares names without regard to case, then uses the original
+// spelling to keep names that differ only by case in a consistent order.
+func compareNames(left, right string) int {
+	if comparison := strings.Compare(strings.ToLower(left), strings.ToLower(right)); comparison != 0 {
+		return comparison
+	}
+
+	return strings.Compare(left, right)
 }
 
 // renderOutputs renders the tree and returns each document with its file extension.

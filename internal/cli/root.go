@@ -14,6 +14,7 @@ func NewRootCmd() *cobra.Command {
 	options := app.DefaultOptions()
 
 	format := string(options.Format)
+	sortOrder := string(options.Sort)
 
 	cmd := &cobra.Command{
 		Use:           "pathtick [target-directory]",
@@ -28,6 +29,7 @@ func NewRootCmd() *cobra.Command {
 			}
 
 			options.Format = app.OutputFormat(format)
+			options.Sort = app.SortOrder(sortOrder)
 
 			// Reject explicit file-output options when stdout mode is enabled.
 			if options.Stdout {
@@ -62,6 +64,9 @@ func NewRootCmd() *cobra.Command {
 	// Traversal
 	flags.IntVarP(&options.Depth, "depth", "d", options.Depth, "Maximum directory traversal depth; -1 means unlimited")
 
+	// Sorting
+	flags.StringVarP(&sortOrder, "sort", "s", sortOrder, "Sort directory entries, case-insensitively: none, asc, or desc")
+
 	cmd.SetHelpFunc(func(cmd *cobra.Command, _ []string) {
 		out := cmd.OutOrStdout()
 		helpFlags := cmd.Flags()
@@ -95,6 +100,13 @@ func NewRootCmd() *cobra.Command {
 			"Traversal",
 			helpFlags,
 			"depth",
+		)
+
+		printFlagGroup(
+			out,
+			"Sorting",
+			helpFlags,
+			"sort",
 		)
 
 		printFlagGroup(

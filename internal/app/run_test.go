@@ -39,6 +39,76 @@ func TestRunWritesMarkdownFile(t *testing.T) {
 	}
 }
 
+func TestRunSortsDirectoryEntries(t *testing.T) {
+	projectDir := createProject(t)
+	middleDir := filepath.Join(projectDir, "Middle")
+	if err := os.MkdirAll(middleDir, 0o755); err != nil {
+		t.Fatalf("create nested directory: %v", err)
+	}
+
+	for path, contents := range map[string]string{
+		filepath.Join(projectDir, "a"):           "a",
+		filepath.Join(projectDir, "PathTick.md"): "PathTick",
+		filepath.Join(projectDir, "zeta.txt"):    "zeta",
+		filepath.Join(middleDir, "AInside"):      "AInside",
+		filepath.Join(middleDir, "zInside"):      "zInside",
+	} {
+		if err := os.WriteFile(path, []byte(contents), 0o644); err != nil {
+			t.Fatalf("create file %q: %v", path, err)
+		}
+	}
+
+	tests := []struct {
+		name     string
+		order    app.SortOrder
+		wantText string
+	}{
+		{
+			name:  "ascending is case-insensitive and recursive",
+			order: app.SortAscending,
+			wantText: "# project\n\n" +
+				"- [ ] project\n" +
+				"  - [ ] a\n" +
+				"  - [ ] Middle\n" +
+				"    - [ ] AInside\n" +
+				"    - [ ] zInside\n" +
+				"  - [ ] PathTick\\.md\n" +
+				"  - [ ] README\\.md\n" +
+				"  - [ ] zeta\\.txt\n",
+		},
+		{
+			name:  "descending is case-insensitive and recursive",
+			order: app.SortDescending,
+			wantText: "# project\n\n" +
+				"- [ ] project\n" +
+				"  - [ ] zeta\\.txt\n" +
+				"  - [ ] README\\.md\n" +
+				"  - [ ] PathTick\\.md\n" +
+				"  - [ ] Middle\n" +
+				"    - [ ] zInside\n" +
+				"    - [ ] AInside\n" +
+				"  - [ ] a\n",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			options := app.DefaultOptions()
+			options.TargetDir = projectDir
+			options.Sort = test.order
+			options.Stdout = true
+
+			var stdout bytes.Buffer
+			if err := app.Run(options, &stdout); err != nil {
+				t.Fatalf("Run() error = %v", err)
+			}
+			if got := stdout.String(); got != test.wantText {
+				t.Errorf("stdout contents:\ngot:\n%q\nwant:\n%q", got, test.wantText)
+			}
+		})
+	}
+}
+
 func TestRunWritesHTMLFile(t *testing.T) {
 	projectDir := createProject(t)
 	outputDir := filepath.Join(t.TempDir(), "nested", "output")

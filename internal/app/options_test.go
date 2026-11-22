@@ -15,6 +15,7 @@ func TestDefaultOptions(t *testing.T) {
 		OutputDir:      ".",
 		OutputBaseName: "PathTick",
 		Format:         app.FormatMarkdown,
+		Sort:           app.SortNone,
 		Stdout:         false,
 		Overwrite:      false,
 	}
@@ -27,6 +28,8 @@ func TestDefaultOptions(t *testing.T) {
 
 func TestOptionsValidate(t *testing.T) {
 	validDefaults := app.DefaultOptions()
+	validDepthZero := validDefaults
+	validDepthZero.Depth = 0
 	validStdout := validDefaults
 	validStdout.Stdout = true
 	validOverwrite := validDefaults
@@ -35,11 +38,19 @@ func TestOptionsValidate(t *testing.T) {
 	validHTML.Format = app.FormatHTML
 	validBoth := validDefaults
 	validBoth.Format = app.FormatBoth
+	validSortAscending := validDefaults
+	validSortAscending.Sort = app.SortAscending
+	validSortDescending := validDefaults
+	validSortDescending.Sort = app.SortDescending
 
 	emptyTarget := validDefaults
 	emptyTarget.TargetDir = ""
 	unsupportedUnknown := validDefaults
 	unsupportedUnknown.Format = "json"
+	unsupportedSort := validDefaults
+	unsupportedSort.Sort = "random"
+	invalidDepth := validDefaults
+	invalidDepth.Depth = -2
 	stdoutAndOverwrite := validDefaults
 	stdoutAndOverwrite.Stdout = true
 	stdoutAndOverwrite.Overwrite = true
@@ -52,6 +63,10 @@ func TestOptionsValidate(t *testing.T) {
 		{
 			name:    "default markdown options are valid",
 			options: validDefaults,
+		},
+		{
+			name:    "depth zero is valid",
+			options: validDepthZero,
 		},
 		{
 			name:    "markdown to stdout is valid",
@@ -75,9 +90,27 @@ func TestOptionsValidate(t *testing.T) {
 			options: validBoth,
 		},
 		{
+			name:    "ascending sort",
+			options: validSortAscending,
+		},
+		{
+			name:    "descending sort",
+			options: validSortDescending,
+		},
+		{
 			name:    "unknown format",
 			options: unsupportedUnknown,
 			wantErr: "unsupported --format",
+		},
+		{
+			name:    "unknown sort order",
+			options: unsupportedSort,
+			wantErr: "unsupported --sort",
+		},
+		{
+			name:    "depth below unlimited",
+			options: invalidDepth,
+			wantErr: "--depth must be -1 or greater",
 		},
 		{
 			name:    "stdout with overwrite",

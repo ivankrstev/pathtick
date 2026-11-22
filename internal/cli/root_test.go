@@ -28,6 +28,88 @@ func TestRootCmdStdout(t *testing.T) {
 	}
 }
 
+func TestRootCmdDepthLimitsStdout(t *testing.T) {
+	projectDir := createProject(t)
+	nestedDir := filepath.Join(projectDir, "nested")
+	nestedChildDir := filepath.Join(nestedDir, "child")
+	if err := os.MkdirAll(nestedChildDir, 0o755); err != nil {
+		t.Fatalf("create nested directories: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(nestedDir, "inside.txt"), []byte("inside"), 0o644); err != nil {
+		t.Fatalf("create nested file: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(nestedChildDir, "deep.txt"), []byte("deep"), 0o644); err != nil {
+		t.Fatalf("create deep file: %v", err)
+	}
+
+	command := cli.NewRootCmd()
+	var stdout strings.Builder
+	command.SetOut(&stdout)
+	command.SetArgs([]string{"--stdout", "--depth", "1", projectDir})
+
+	if err := command.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	for _, want := range []string{
+		"- [ ] project",
+		"README\\.md",
+		"nested",
+	} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Errorf("command output does not contain %q:\n%s", want, stdout.String())
+		}
+	}
+
+	for _, excluded := range []string{"inside.txt", "child", "deep.txt"} {
+		if strings.Contains(stdout.String(), excluded) {
+			t.Errorf("command output unexpectedly contains %q:\n%s", excluded, stdout.String())
+		}
+	}
+}
+
+func TestRootCmdSortFlag(t *testing.T) {
+	projectDir := createProject(t)
+	for name, contents := range map[string]string{
+		"a":           "a",
+		"PathTick.md": "PathTick",
+		"zeta.txt":    "zeta",
+	} {
+		if err := os.WriteFile(filepath.Join(projectDir, name), []byte(contents), 0o644); err != nil {
+			t.Fatalf("create file %q: %v", name, err)
+		}
+	}
+
+	command := cli.NewRootCmd()
+	var stdout strings.Builder
+	command.SetOut(&stdout)
+	command.SetArgs([]string{"--stdout", "--sort", "desc", projectDir})
+
+	if err := command.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	got := stdout.String()
+	orderedLines := []string{
+		"  - [ ] zeta\\.txt\n",
+		"  - [ ] README\\.md\n",
+		"  - [ ] PathTick\\.md\n",
+		"  - [ ] a\n",
+	}
+	previousIndex := -1
+	for _, line := range orderedLines {
+		index := strings.Index(got, line)
+		if index == -1 {
+			t.Fatalf("command output does not contain %q:\n%s", line, got)
+		}
+		if index <= previousIndex {
+			t.Errorf("command output does not order entries as %v:\n%s", orderedLines, got)
+			break
+		}
+		previousIndex = index
+	}
+}
+
 func TestRootCmdHTMLToStdout(t *testing.T) {
 	projectDir := createProject(t)
 	command := cli.NewRootCmd()

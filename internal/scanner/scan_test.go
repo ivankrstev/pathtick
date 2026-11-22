@@ -80,6 +80,95 @@ func TestScanDirectoryNestedTree(t *testing.T) {
 	}
 }
 
+func TestScanWithDepth(t *testing.T) {
+	targetDir := t.TempDir()
+	level1Dir := filepath.Join(targetDir, "level1")
+	level2Dir := filepath.Join(level1Dir, "level2")
+	level3Dir := filepath.Join(level2Dir, "level3")
+
+	if err := os.MkdirAll(level3Dir, 0o755); err != nil {
+		t.Fatalf("create nested directories: %v", err)
+	}
+	for path, contents := range map[string]string{
+		filepath.Join(targetDir, "root.txt"):     "root",
+		filepath.Join(level1Dir, "inside.txt"):   "level1",
+		filepath.Join(level2Dir, "deep.txt"):     "level2",
+		filepath.Join(level3Dir, "furthest.txt"): "level3",
+	} {
+		if err := os.WriteFile(path, []byte(contents), 0o644); err != nil {
+			t.Fatalf("create file %q: %v", path, err)
+		}
+	}
+
+	tests := []struct {
+		name      string
+		maxDepth  int
+		wantPaths []string
+	}{
+		{
+			name:     "unlimited",
+			maxDepth: -1,
+			wantPaths: []string{
+				".",
+				"root.txt",
+				"level1",
+				"level1/inside.txt",
+				"level1/level2",
+				"level1/level2/deep.txt",
+				"level1/level2/level3",
+				"level1/level2/level3/furthest.txt",
+			},
+		},
+		{
+			name:     "depth zero includes only the root",
+			maxDepth: 0,
+			wantPaths: []string{
+				".",
+			},
+		},
+		{
+			name:     "depth one includes immediate entries",
+			maxDepth: 1,
+			wantPaths: []string{
+				".",
+				"root.txt",
+				"level1",
+			},
+		},
+		{
+			name:     "depth two includes entries two levels below root",
+			maxDepth: 2,
+			wantPaths: []string{
+				".",
+				"root.txt",
+				"level1",
+				"level1/inside.txt",
+				"level1/level2",
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got, err := scanner.ScanWithDepth(targetDir, test.maxDepth)
+			if err != nil {
+				t.Fatalf("ScanWithDepth() error = %v", err)
+			}
+
+			gotNodes := collectNodes(got)
+			if len(gotNodes) != len(test.wantPaths) {
+				t.Fatalf("ScanWithDepth() returned paths %v, want %v", nodePaths(gotNodes), test.wantPaths)
+			}
+
+			for _, path := range test.wantPaths {
+				if _, ok := gotNodes[path]; !ok {
+					t.Errorf("ScanWithDepth() missing node at relative path %q", path)
+				}
+			}
+		})
+	}
+}
+
 func TestScanDirectoryRejectsMissingPath(t *testing.T) {
 	missingPath := filepath.Join(t.TempDir(), "missing")
 

@@ -14,6 +14,15 @@ const (
 	FormatBoth     OutputFormat = "both"
 )
 
+// SortOrder controls the order in which directory entries are exported.
+type SortOrder string
+
+const (
+	SortNone       SortOrder = "none"
+	SortAscending  SortOrder = "asc"
+	SortDescending SortOrder = "desc"
+)
+
 // Options contains the settings for one scan and export.
 type Options struct {
 	TargetDir      string
@@ -22,6 +31,7 @@ type Options struct {
 	OutputDir      string
 	OutputBaseName string
 	Format         OutputFormat
+	Sort           SortOrder
 	Stdout         bool
 	Overwrite      bool
 }
@@ -34,6 +44,7 @@ func DefaultOptions() Options {
 		OutputDir:      ".",
 		OutputBaseName: "PathTick",
 		Format:         FormatMarkdown,
+		Sort:           SortNone,
 		Stdout:         false,
 		Overwrite:      false,
 		Depth:          -1,
@@ -58,6 +69,18 @@ func (options Options) Validate() error {
 			FormatMarkdown,
 			FormatHTML,
 			FormatBoth,
+		)
+	}
+
+	switch options.Sort {
+	case SortNone, SortAscending, SortDescending:
+	default:
+		return fmt.Errorf(
+			"unsupported --sort %q: supported values are %q, %q, and %q",
+			options.Sort,
+			SortNone,
+			SortAscending,
+			SortDescending,
 		)
 	}
 
