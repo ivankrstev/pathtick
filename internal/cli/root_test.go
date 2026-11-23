@@ -68,6 +68,71 @@ func TestRootCmdDepthLimitsStdout(t *testing.T) {
 	}
 }
 
+func TestRootCmdTraversalFilters(t *testing.T) {
+	projectDir := filepath.Join(t.TempDir(), ".project")
+	for _, dir := range []string{".cache", "nested"} {
+		if err := os.MkdirAll(filepath.Join(projectDir, dir), 0o755); err != nil {
+			t.Fatalf("create directory %q: %v", dir, err)
+		}
+	}
+	for _, path := range []string{"README.md", ".cache/inside.txt", "nested/.settings"} {
+		if err := os.WriteFile(filepath.Join(projectDir, path), nil, 0o644); err != nil {
+			t.Fatalf("create file %q: %v", path, err)
+		}
+	}
+	for path, target := range map[string]string{
+		"file-link":          "README.md",
+		"directory-link":     "nested",
+		"nested/broken-link": "missing",
+	} {
+		if err := os.Symlink(filepath.Join(projectDir, target), filepath.Join(projectDir, path)); err != nil {
+			t.Skipf("cannot create symlink %q in this environment: %v", path, err)
+		}
+	}
+
+	tests := []struct {
+		name         string
+		flags        []string
+		wantHidden   bool
+		wantSymlinks bool
+	}{
+		{name: "defaults", wantHidden: true, wantSymlinks: true},
+		{name: "skip hidden", flags: []string{"--skip-hidden"}, wantSymlinks: true},
+		{name: "skip symlinks", flags: []string{"--skip-symlinks"}, wantHidden: true},
+		{name: "skip both", flags: []string{"--skip-hidden", "--skip-symlinks"}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			command := cli.NewRootCmd()
+			var stdout strings.Builder
+			command.SetOut(&stdout)
+			args := append([]string{"--stdout", "--format", "html", projectDir}, test.flags...)
+			command.SetArgs(args)
+
+			if err := command.Execute(); err != nil {
+				t.Fatalf("Execute() error = %v", err)
+			}
+
+			got := stdout.String()
+			for path, want := range map[string]bool{
+				".":                  true,
+				"README.md":          true,
+				"nested":             true,
+				".cache":             test.wantHidden,
+				".cache/inside.txt":  test.wantHidden,
+				"nested/.settings":   test.wantHidden,
+				"file-link":          test.wantSymlinks,
+				"directory-link":     test.wantSymlinks,
+				"nested/broken-link": test.wantSymlinks,
+			} {
+				if found := strings.Contains(got, `data-relative-path="`+path+`"`); found != want {
+					t.Errorf("output contains path %q = %t, want %t", path, found, want)
+				}
+			}
+		})
+	}
+}
+
 func TestRootCmdSortFlag(t *testing.T) {
 	projectDir := createProject(t)
 	for name, contents := range map[string]string{
@@ -287,6 +352,9 @@ func TestRootCmdHelpListsFlagGroups(t *testing.T) {
 		"--format",
 		"Output:",
 		"--stdout",
+		"Traversal:",
+		"--skip-symlinks",
+		"--skip-hidden",
 		"Help:",
 	} {
 		if !strings.Contains(stdout.String(), want) {

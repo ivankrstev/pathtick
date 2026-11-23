@@ -27,6 +27,8 @@ const (
 type Options struct {
 	TargetDir      string
 	Depth          int
+	SkipSymlinks   bool
+	SkipHidden     bool
 	Title          string
 	OutputDir      string
 	OutputBaseName string

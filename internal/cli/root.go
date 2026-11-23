@@ -63,6 +63,8 @@ func NewRootCmd() *cobra.Command {
 
 	// Traversal
 	flags.IntVarP(&options.Depth, "depth", "d", options.Depth, "Maximum directory traversal depth; -1 means unlimited")
+	flags.BoolVar(&options.SkipSymlinks, "skip-symlinks", options.SkipSymlinks, "Exclude symbolic link entries")
+	flags.BoolVar(&options.SkipHidden, "skip-hidden", options.SkipHidden, "Exclude entries whose names start with a dot")
 
 	// Sorting
 	flags.StringVarP(&sortOrder, "sort", "s", sortOrder, "Sort directory entries, case-insensitively: none, asc, or desc")
@@ -100,6 +102,8 @@ func NewRootCmd() *cobra.Command {
 			"Traversal",
 			helpFlags,
 			"depth",
+			"skip-symlinks",
+			"skip-hidden",
 		)
 
 		printFlagGroup(

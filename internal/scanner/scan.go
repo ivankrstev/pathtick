@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"syscall"
 
 	"github.com/ivankrstev/pathtick/internal/tree"
@@ -53,8 +54,20 @@ func Scan(targetDir string) (*tree.Node, error) {
 // ScanWithDepth builds a tree rooted at the provided directory, including entries
 // through maxDepth. The root is at depth 0; -1 scans without a depth limit.
 func ScanWithDepth(targetDir string, maxDepth int) (*tree.Node, error) {
-	if maxDepth < -1 {
-		return nil, fmt.Errorf("maximum depth must be -1 or greater, got %d", maxDepth)
+	return ScanWithOptions(targetDir, Options{MaxDepth: maxDepth})
+}
+
+// Options controls traversal and filtering of a target directory's entries.
+type Options struct {
+	MaxDepth     int // The root is at depth 0. Use -1 for unlimited traversal.
+	SkipSymlinks bool
+	SkipHidden   bool
+}
+
+// ScanWithOptions builds a tree rooted at targetDir using the given traversal options.
+func ScanWithOptions(targetDir string, options Options) (*tree.Node, error) {
+	if options.MaxDepth < -1 {
+		return nil, fmt.Errorf("maximum depth must be -1 or greater, got %d", options.MaxDepth)
 	}
 
 	if targetDir == "" {
@@ -74,7 +87,7 @@ func ScanWithDepth(targetDir string, maxDepth int) (*tree.Node, error) {
 		return nil, fmt.Errorf("target %q is not a directory", absolutePath)
 	}
 
-	children, err := scanChildren(absolutePath, ".", 0, maxDepth)
+	children, err := scanChildren(absolutePath, ".", 0, options)
 	if err != nil {
 		return nil, err
 	}
@@ -92,10 +105,10 @@ func ScanWithDepth(targetDir string, maxDepth int) (*tree.Node, error) {
 func scanChildren(
 	directoryPath,
 	relativePath string,
-	directoryDepth,
-	maxDepth int,
+	directoryDepth int,
+	options Options,
 ) ([]*tree.Node, error) {
-	if maxDepth >= 0 && directoryDepth >= maxDepth {
+	if options.MaxDepth >= 0 && directoryDepth >= options.MaxDepth {
 		return nil, nil
 	}
 
@@ -107,28 +120,37 @@ func scanChildren(
 	children := make([]*tree.Node, 0, len(entries))
 
 	for _, entry := range entries {
-		childRelativePath := filepath.Join(relativePath, entry.Name())
+		name := entry.Name()
+		if options.SkipHidden && strings.HasPrefix(name, ".") {
+			continue
+		}
+		isSymlink := entry.Type()&os.ModeSymlink != 0
+		if options.SkipSymlinks && isSymlink {
+			continue
+		}
+
+		childRelativePath := filepath.Join(relativePath, name)
 
 		node := &tree.Node{
-			Name:         entry.Name(),
+			Name:         name,
 			RelativePath: filepath.ToSlash(childRelativePath),
 			Kind:         tree.KindFile,
 		}
 
 		switch {
-		case entry.Type()&os.ModeSymlink != 0:
+		case isSymlink:
 			node.Kind = tree.KindSymlink
 
 		case entry.IsDir():
 			node.Kind = tree.KindDirectory
 
-			childPath := filepath.Join(directoryPath, entry.Name())
+			childPath := filepath.Join(directoryPath, name)
 
 			node.Children, err = scanChildren(
 				childPath,
 				childRelativePath,
 				directoryDepth+1,
-				maxDepth,
+				options,
 			)
 
 			if err != nil {

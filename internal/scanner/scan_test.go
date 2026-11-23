@@ -242,6 +242,96 @@ func TestScanDirectoryDoesNotFollowDirectorySymlink(t *testing.T) {
 	}
 }
 
+func TestScanWithOptionsTraversalFilters(t *testing.T) {
+	targetDir := t.TempDir()
+	for _, dir := range []string{".cache", "nested"} {
+		if err := os.MkdirAll(filepath.Join(targetDir, dir), 0o755); err != nil {
+			t.Fatalf("create directory %q: %v", dir, err)
+		}
+	}
+	for _, path := range []string{
+		"README.md",
+		".cache/inside.txt",
+		"nested/inside.txt",
+		"nested/.settings",
+	} {
+		if err := os.WriteFile(filepath.Join(targetDir, path), nil, 0o644); err != nil {
+			t.Fatalf("create file %q: %v", path, err)
+		}
+	}
+	for path, target := range map[string]string{
+		"file-link":          "README.md",
+		"directory-link":     "nested",
+		"nested/broken-link": "missing",
+		".hidden-link":       "README.md",
+	} {
+		if err := os.Symlink(filepath.Join(targetDir, target), filepath.Join(targetDir, path)); err != nil {
+			t.Skipf("cannot create symlink %q in this environment: %v", path, err)
+		}
+	}
+
+	tests := []struct {
+		name         string
+		skipHidden   bool
+		skipSymlinks bool
+		wantPaths    []string
+	}{
+		{
+			name: "defaults include hidden entries and symlinks",
+			wantPaths: []string{
+				".", "README.md", ".cache", ".cache/inside.txt",
+				"nested", "nested/inside.txt", "nested/.settings",
+				"file-link", "directory-link", "nested/broken-link", ".hidden-link",
+			},
+		},
+		{
+			name:       "skip hidden entries",
+			skipHidden: true,
+			wantPaths: []string{
+				".", "README.md", "nested", "nested/inside.txt",
+				"file-link", "directory-link", "nested/broken-link",
+			},
+		},
+		{
+			name:         "skip symlinks",
+			skipSymlinks: true,
+			wantPaths: []string{
+				".", "README.md", ".cache", ".cache/inside.txt",
+				"nested", "nested/inside.txt", "nested/.settings",
+			},
+		},
+		{
+			name:         "skip hidden entries and symlinks",
+			skipHidden:   true,
+			skipSymlinks: true,
+			wantPaths:    []string{".", "README.md", "nested", "nested/inside.txt"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got, err := scanner.ScanWithOptions(targetDir, scanner.Options{
+				MaxDepth:     -1,
+				SkipHidden:   test.skipHidden,
+				SkipSymlinks: test.skipSymlinks,
+			})
+			if err != nil {
+				t.Fatalf("ScanWithOptions() error = %v", err)
+			}
+
+			gotNodes := collectNodes(got)
+			if len(gotNodes) != len(test.wantPaths) {
+				t.Fatalf("ScanWithOptions() returned paths %v, want %v", nodePaths(gotNodes), test.wantPaths)
+			}
+			for _, path := range test.wantPaths {
+				if _, ok := gotNodes[path]; !ok {
+					t.Errorf("ScanWithOptions() missing node at relative path %q", path)
+				}
+			}
+		})
+	}
+}
+
 func collectNodes(root *tree.Node) map[string]*tree.Node {
 	nodes := make(map[string]*tree.Node)
 	var visit func(*tree.Node)

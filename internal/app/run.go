@@ -15,7 +15,11 @@ import (
 
 // run scans the target, renders the requested output, and writes it to stdout or files.
 func Run(options Options, stdout io.Writer) error {
-	root, err := scanner.ScanWithDepth(options.TargetDir, options.Depth)
+	root, err := scanner.ScanWithOptions(options.TargetDir, scanner.Options{
+		MaxDepth:     options.Depth,
+		SkipSymlinks: options.SkipSymlinks,
+		SkipHidden:   options.SkipHidden,
+	})
 	if err != nil {
 		return err
 	}

@@ -11,3 +11,5 @@
 | --overwrite | Boolean | false | Allow replacing existing export files |
 | --depth, -d | Integer; -1 means unlimited | -1 | Maximum directory traversal depth |
 | --sort, -s | none, asc, desc | none | Order entries in the export(case-insensitive) |
+| --skip-symlinks | Boolean | false | Exclude symbolic links |
+| --skip-hidden | Boolean | false | Exclude entries whose names start with a dot |
