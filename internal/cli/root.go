@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"text/tabwriter"
 
 	"github.com/ivankrstev/pathtick/internal/app"
 	"github.com/spf13/cobra"
@@ -133,6 +134,7 @@ func printFlagGroup(
 	names ...string,
 ) {
 	fmt.Fprintf(out, "%s:\n", title)
+	w := tabwriter.NewWriter(out, 0, 0, 4, ' ', 0)
 
 	for _, name := range names {
 		flag := flags.Lookup(name)
@@ -156,9 +158,10 @@ func printFlagGroup(
 			defaultValue = " (default " + flag.DefValue + ")"
 		}
 
-		fmt.Fprintf(out, "  %s--%s%s\t%s%s\n",
+		fmt.Fprintf(w, "  %s--%s%s\t%s%s\n",
 			shorthand, flag.Name, valueType, flag.Usage, defaultValue)
 	}
 
+	_ = w.Flush()
 	fmt.Fprintln(out)
 }
