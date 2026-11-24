@@ -305,7 +305,7 @@ func TestRootCmdRejectsStdoutWithOverwrite(t *testing.T) {
 	if err == nil {
 		t.Fatal("Execute() error = nil, want an error for stdout with overwrite")
 	}
-	if want := "cannot use both --stdout and --overwrite"; !strings.Contains(err.Error(), want) {
+	if want := "--stdout and --overwrite cannot be used together"; !strings.Contains(err.Error(), want) {
 		t.Errorf("Execute() error = %q, want it to contain %q", err, want)
 	}
 }
@@ -318,7 +318,7 @@ func TestRootCmdRejectsStdoutWithBothFormats(t *testing.T) {
 	if err == nil {
 		t.Fatal("Execute() error = nil, want an error for stdout with both formats")
 	}
-	if want := "--stdout cannot be used with --format=both"; !strings.Contains(err.Error(), want) {
+	if want := "--stdout and --format=both cannot be used together;"; !strings.Contains(err.Error(), want) {
 		t.Errorf("Execute() error = %q, want it to contain %q", err, want)
 	}
 }
@@ -348,13 +348,15 @@ func TestRootCmdHelpListsFlagGroups(t *testing.T) {
 
 	for _, want := range []string{
 		"Arguments:",
-		"Formatting:",
-		"--format",
 		"Output:",
 		"--stdout",
-		"Traversal:",
+		"Scan:",
 		"--skip-symlinks",
 		"--skip-hidden",
+		"depth",
+		"Display:",
+		"--sort",
+		"title",
 		"Help:",
 	} {
 		if !strings.Contains(stdout.String(), want) {

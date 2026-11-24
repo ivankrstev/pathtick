@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"text/tabwriter"
@@ -13,9 +12,6 @@ import (
 
 func NewRootCmd() *cobra.Command {
 	options := app.DefaultOptions()
-
-	format := string(options.Format)
-	sortOrder := string(options.Sort)
 
 	cmd := &cobra.Command{
 		Use:           "pathtick [target-directory]",
@@ -29,16 +25,12 @@ func NewRootCmd() *cobra.Command {
 				options.TargetDir = args[0]
 			}
 
-			options.Format = app.OutputFormat(format)
-			options.Sort = app.SortOrder(sortOrder)
-
 			// Reject explicit file-output options when stdout mode is enabled.
-			if options.Stdout {
-				if cmd.Flags().Changed("output-dir") {
-					return errors.New("--stdout and --output-dir cannot be used together")
-				}
-				if cmd.Flags().Changed("output-name") {
-					return errors.New("--stdout and --output-name cannot be used together")
+			if options.Output.Stdout {
+				for _, name := range []string{"output-dir", "output-name", "overwrite"} {
+					if cmd.Flags().Changed(name) {
+						return fmt.Errorf("--stdout and --%s cannot be used together", name)
+					}
 				}
 			}
 
@@ -52,23 +44,25 @@ func NewRootCmd() *cobra.Command {
 
 	flags := cmd.Flags()
 
-	// Formatting
-	flags.StringVarP(&format, "format", "f", string(options.Format), "Output format: md, html, or both")
-	flags.StringVarP(&options.Title, "title", "t", options.Title, "Title shown in the exported document (default: derived from the target directory)")
+	// Enum flags use VarP: the enum types implement pflag.Value, so they bind
+	// directly to the option fields. Bad values are rejected while parsing,
+	// and the help text shows the allowed values via Type().
+
+	// Scan
+	flags.IntVarP(&options.Scan.Depth, "depth", "d", options.Scan.Depth, "Maximum directory traversal depth; -1 means unlimited")
+	flags.BoolVar(&options.Scan.SkipSymlinks, "skip-symlinks", options.Scan.SkipSymlinks, "Exclude symbolic link entries")
+	flags.BoolVar(&options.Scan.SkipHidden, "skip-hidden", options.Scan.SkipHidden, "Exclude entries whose names start with a dot")
+
+	// Display
+	flags.StringVarP(&options.Display.Title, "title", "t", options.Display.Title, "Title shown in the exported document (default: derived from the target directory)")
+	flags.VarP(&options.Display.Sort, "sort", "s", "Sort directory entries, case-insensitively: none, asc, or desc")
 
 	// Output
-	flags.StringVarP(&options.OutputDir, "output-dir", "o", options.OutputDir, "Directory to write the output files")
-	flags.StringVarP(&options.OutputBaseName, "output-name", "n", options.OutputBaseName, "Base name for the output files (without extension)")
-	flags.BoolVar(&options.Stdout, "stdout", options.Stdout, "Write output to stdout instead of files")
-	flags.BoolVar(&options.Overwrite, "overwrite", options.Overwrite, "Overwrite existing output files")
-
-	// Traversal
-	flags.IntVarP(&options.Depth, "depth", "d", options.Depth, "Maximum directory traversal depth; -1 means unlimited")
-	flags.BoolVar(&options.SkipSymlinks, "skip-symlinks", options.SkipSymlinks, "Exclude symbolic link entries")
-	flags.BoolVar(&options.SkipHidden, "skip-hidden", options.SkipHidden, "Exclude entries whose names start with a dot")
-
-	// Sorting
-	flags.StringVarP(&sortOrder, "sort", "s", sortOrder, "Sort directory entries, case-insensitively: none, asc, or desc")
+	flags.VarP(&options.Output.Format, "format", "f", "Output format")
+	flags.StringVarP(&options.Output.Dir, "output-dir", "o", options.Output.Dir, "Directory to write the output files")
+	flags.StringVarP(&options.Output.BaseName, "output-name", "n", options.Output.BaseName, "Base name for the output files (without extension)")
+	flags.BoolVar(&options.Output.Stdout, "stdout", options.Output.Stdout, "Write output to stdout instead of files")
+	flags.BoolVar(&options.Output.Overwrite, "overwrite", options.Output.Overwrite, "Overwrite existing output files")
 
 	cmd.SetHelpFunc(func(cmd *cobra.Command, _ []string) {
 		out := cmd.OutOrStdout()
@@ -82,25 +76,7 @@ func NewRootCmd() *cobra.Command {
 
 		printFlagGroup(
 			out,
-			"Formatting",
-			helpFlags,
-			"format",
-			"title",
-		)
-
-		printFlagGroup(
-			out,
-			"Output",
-			helpFlags,
-			"output-dir",
-			"output-name",
-			"stdout",
-			"overwrite",
-		)
-
-		printFlagGroup(
-			out,
-			"Traversal",
+			"Scan",
 			helpFlags,
 			"depth",
 			"skip-symlinks",
@@ -109,9 +85,21 @@ func NewRootCmd() *cobra.Command {
 
 		printFlagGroup(
 			out,
-			"Sorting",
+			"Display",
 			helpFlags,
+			"title",
 			"sort",
+		)
+
+		printFlagGroup(
+			out,
+			"Output",
+			helpFlags,
+			"format",
+			"output-dir",
+			"output-name",
+			"stdout",
+			"overwrite",
 		)
 
 		printFlagGroup(

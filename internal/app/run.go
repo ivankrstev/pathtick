@@ -16,19 +16,19 @@ import (
 // run scans the target, renders the requested output, and writes it to stdout or files.
 func Run(options Options, stdout io.Writer) error {
 	root, err := scanner.ScanWithOptions(options.TargetDir, scanner.Options{
-		MaxDepth:     options.Depth,
-		SkipSymlinks: options.SkipSymlinks,
-		SkipHidden:   options.SkipHidden,
+		MaxDepth:     options.Scan.Depth,
+		SkipSymlinks: options.Scan.SkipSymlinks,
+		SkipHidden:   options.Scan.SkipHidden,
 	})
 	if err != nil {
 		return err
 	}
-	if err := sortTree(root, options.Sort); err != nil {
+	if err := sortTree(root, options.Display.Sort); err != nil {
 		return err
 	}
 
-	if options.Title == "" {
-		options.Title = root.Name
+	if options.Display.Title == "" {
+		options.Display.Title = root.Name
 	}
 
 	outputs, err := renderOutputs(root, options)
@@ -36,7 +36,7 @@ func Run(options Options, stdout io.Writer) error {
 		return err
 	}
 
-	if options.Stdout {
+	if options.Output.Stdout {
 		if len(outputs) != 1 {
 			return errors.New("--stdout requires exactly one rendered output")
 		}
@@ -50,9 +50,9 @@ func Run(options Options, stdout io.Writer) error {
 	}
 
 	return output.WriteFiles(
-		options.OutputDir,
-		options.OutputBaseName,
-		options.Overwrite,
+		options.Output.Dir,
+		options.Output.BaseName,
+		options.Output.Overwrite,
 		outputs,
 	)
 }
@@ -103,34 +103,34 @@ func compareNames(left, right string) int {
 
 // renderOutputs renders the tree and returns each document with its file extension.
 func renderOutputs(root *tree.Node, options Options) ([]output.File, error) {
-	switch options.Format {
+	switch options.Output.Format {
 	case FormatMarkdown:
-		markdown, err := renderMarkdown(root, options.Title)
+		markdown, err := renderMarkdown(root, options.Display.Title)
 		if err != nil {
 			return nil, err
 		}
 		return []output.File{markdown}, nil
 
 	case FormatHTML:
-		html, err := renderHTML(root, options.Title)
+		html, err := renderHTML(root, options.Display.Title)
 		if err != nil {
 			return nil, err
 		}
 		return []output.File{html}, nil
 
 	case FormatBoth:
-		markdown, err := renderMarkdown(root, options.Title)
+		markdown, err := renderMarkdown(root, options.Display.Title)
 		if err != nil {
 			return nil, err
 		}
-		html, err := renderHTML(root, options.Title)
+		html, err := renderHTML(root, options.Display.Title)
 		if err != nil {
 			return nil, err
 		}
 		return []output.File{markdown, html}, nil
 
 	default:
-		return nil, fmt.Errorf("unsupported output format: %q", options.Format)
+		return nil, fmt.Errorf("unsupported output format: %q", options.Output.Format)
 	}
 }
 

@@ -5,51 +5,65 @@ import (
 	"fmt"
 )
 
-// OutputFormat identifies the format used for exported content.
-type OutputFormat string
-
+// Defaults. Flag registration should reuse these instead of repeating literals.
 const (
-	FormatMarkdown OutputFormat = "md"
-	FormatHTML     OutputFormat = "html"
-	FormatBoth     OutputFormat = "both"
-)
+	DefaultTargetDir = "."
+	DefaultOutputDir = "."
+	DefaultBaseName  = "PathTick"
 
-// SortOrder controls the order in which directory entries are exported.
-type SortOrder string
-
-const (
-	SortNone       SortOrder = "none"
-	SortAscending  SortOrder = "asc"
-	SortDescending SortOrder = "desc"
+	// UnlimitedDepth disables the depth limit.
+	UnlimitedDepth = -1
 )
 
 // Options contains the settings for one scan and export.
 type Options struct {
-	TargetDir      string
-	Depth          int
-	SkipSymlinks   bool
-	SkipHidden     bool
-	Title          string
-	OutputDir      string
-	OutputBaseName string
-	Format         OutputFormat
-	Sort           SortOrder
-	Stdout         bool
-	Overwrite      bool
+	TargetDir string // positional argument; defaults to "."
+
+	Scan    ScanOptions
+	Display DisplayOptions
+	Output  OutputOptions
+}
+
+// ScanOptions controls the traversal of a target directory's entries.
+type ScanOptions struct {
+	// Depth is the number of levels below the target to visit.
+	// 1 = direct children only, 0 = nothing (empty document),
+	// UnlimitedDepth (-1) = no limit.
+	Depth        int
+	SkipSymlinks bool
+	SkipHidden   bool // names starting with "."
+}
+
+// DisplayOptions controls the structure of the output document.
+type DisplayOptions struct {
+	Title    string // empty = derive from the target directory's name
+	Sort     SortOrder
+}
+
+// OutputOptions controls the output format and destination.
+type OutputOptions struct {
+	Format    OutputFormat
+	Dir       string
+	BaseName  string // file name stem; the format supplies the extension
+	Stdout    bool
+	Overwrite bool
 }
 
 // DefaultOptions returns the default settings for a run.
 func DefaultOptions() Options {
 	return Options{
-		TargetDir:      ".",
-		Title:          "", // empty means derive from the target directory
-		OutputDir:      ".",
-		OutputBaseName: "PathTick",
-		Format:         FormatMarkdown,
-		Sort:           SortNone,
-		Stdout:         false,
-		Overwrite:      false,
-		Depth:          -1,
+		TargetDir: DefaultTargetDir,
+		Scan: ScanOptions{
+			Depth: UnlimitedDepth,
+		},
+		Display: DisplayOptions{
+			Sort: SortNone,
+		},
+		Output: OutputOptions{
+			Format:   FormatMarkdown,
+			Dir:      DefaultOutputDir,
+			BaseName: DefaultBaseName,
+		},
 	}
 }
 
@@ -58,40 +72,36 @@ func (options Options) Validate() error {
 	if options.TargetDir == "" {
 		return errors.New("target directory cannot be empty")
 	}
-	if options.Depth < -1 {
-		return fmt.Errorf("--depth must be -1 or greater, got %d", options.Depth)
+	if options.Scan.Depth < -1 {
+		return fmt.Errorf("--depth must be -1 or greater, got %d", options.Scan.Depth)
 	}
 
-	switch options.Format {
+	switch options.Output.Format {
 	case FormatMarkdown, FormatHTML, FormatBoth:
 	default:
 		return fmt.Errorf(
 			"unsupported --format %q: supported formats are %q, %q, and %q",
-			options.Format,
+			options.Output.Format,
 			FormatMarkdown,
 			FormatHTML,
 			FormatBoth,
 		)
 	}
 
-	switch options.Sort {
+	switch options.Display.Sort {
 	case SortNone, SortAscending, SortDescending:
 	default:
 		return fmt.Errorf(
 			"unsupported --sort %q: supported values are %q, %q, and %q",
-			options.Sort,
+			options.Display.Sort,
 			SortNone,
 			SortAscending,
 			SortDescending,
 		)
 	}
 
-	if options.Stdout && options.Format == FormatBoth {
-		return errors.New("--stdout cannot be used with --format=both; choose either md or html")
-	}
-
-	if options.Stdout && options.Overwrite {
-		return errors.New("cannot use both --stdout and --overwrite")
+	if options.Output.Stdout && options.Output.Format == FormatBoth {
+		return errors.New("--stdout and --format=both cannot be used together; choose either md or html")
 	}
 
 	return nil

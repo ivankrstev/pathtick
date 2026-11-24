@@ -1,59 +1,71 @@
 package app_test
 
 import (
+	"io"
+	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/ivankrstev/pathtick/internal/app"
+	"github.com/ivankrstev/pathtick/internal/cli"
 )
 
 func TestDefaultOptions(t *testing.T) {
 	want := app.Options{
-		TargetDir:      ".",
-		Depth:          -1,
-		Title:          "",
-		OutputDir:      ".",
-		OutputBaseName: "PathTick",
-		Format:         app.FormatMarkdown,
-		Sort:           app.SortNone,
-		Stdout:         false,
-		Overwrite:      false,
+		TargetDir: ".",
+		Scan: app.ScanOptions{
+			Depth: -1,
+		},
+		Output: app.OutputOptions{
+			Dir:       ".",
+			BaseName:  "PathTick",
+			Format:    app.FormatMarkdown,
+			Stdout:    false,
+			Overwrite: false,
+		},
+		Display: app.DisplayOptions{
+			Sort:  app.SortNone,
+			Title: "",
+		},
+		// Filter: app.FilterOptions{
+		// 	Only: app.EntryAll,
+		// },
 	}
 
 	got := app.DefaultOptions()
-	if got != want {
-		t.Errorf("DefaultOptions() = %#v, want %#v", got, want)
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("DefaultOptions() = %+v, want %+v", got, want)
 	}
 }
 
 func TestOptionsValidate(t *testing.T) {
 	validDefaults := app.DefaultOptions()
 	validDepthZero := validDefaults
-	validDepthZero.Depth = 0
+	validDepthZero.Scan.Depth = 0
 	validStdout := validDefaults
-	validStdout.Stdout = true
+	validStdout.Output.Stdout = true
 	validOverwrite := validDefaults
-	validOverwrite.Overwrite = true
+	validOverwrite.Output.Overwrite = true
 	validHTML := validDefaults
-	validHTML.Format = app.FormatHTML
+	validHTML.Output.Format = app.FormatHTML
 	validBoth := validDefaults
-	validBoth.Format = app.FormatBoth
+	validBoth.Output.Format = app.FormatBoth
 	validSortAscending := validDefaults
-	validSortAscending.Sort = app.SortAscending
+	validSortAscending.Display.Sort = app.SortAscending
 	validSortDescending := validDefaults
-	validSortDescending.Sort = app.SortDescending
+	validSortDescending.Display.Sort = app.SortDescending
 
 	emptyTarget := validDefaults
 	emptyTarget.TargetDir = ""
 	unsupportedUnknown := validDefaults
-	unsupportedUnknown.Format = "json"
+	unsupportedUnknown.Output.Format = "json"
 	unsupportedSort := validDefaults
-	unsupportedSort.Sort = "random"
+	unsupportedSort.Display.Sort = "random"
 	invalidDepth := validDefaults
-	invalidDepth.Depth = -2
+	invalidDepth.Scan.Depth = -2
 	stdoutAndOverwrite := validDefaults
-	stdoutAndOverwrite.Stdout = true
-	stdoutAndOverwrite.Overwrite = true
+	stdoutAndOverwrite.Output.Stdout = true
+	stdoutAndOverwrite.Output.Overwrite = true
 
 	tests := []struct {
 		name    string
@@ -112,11 +124,6 @@ func TestOptionsValidate(t *testing.T) {
 			options: invalidDepth,
 			wantErr: "--depth must be -1 or greater",
 		},
-		{
-			name:    "stdout with overwrite",
-			options: stdoutAndOverwrite,
-			wantErr: "cannot use both --stdout and --overwrite",
-		},
 	}
 
 	for _, test := range tests {
@@ -134,6 +141,35 @@ func TestOptionsValidate(t *testing.T) {
 			}
 			if !strings.Contains(err.Error(), test.wantErr) {
 				t.Errorf("Validate() error = %q, want it to contain %q", err, test.wantErr)
+			}
+		})
+	}
+}
+
+func TestRootRejectsStdoutWithFileOutputFlags(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{"output-dir", []string{"--stdout", "--output-dir", "out"}, "--stdout and --output-dir cannot be used together"},
+		{"output-name", []string{"--stdout", "--output-name", "list"}, "--stdout and --output-name cannot be used together"},
+		{"overwrite", []string{"--stdout", "--overwrite"}, "--stdout and --overwrite cannot be used together"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := cli.NewRootCmd()
+			cmd.SetArgs(tt.args)
+			cmd.SetOut(io.Discard)
+			cmd.SetErr(io.Discard)
+
+			err := cmd.Execute()
+			if err == nil {
+				t.Fatalf("Execute() error = nil, want an error containing %q", tt.want)
+			}
+			if !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("Execute() error = %q, want it to contain %q", err, tt.want)
 			}
 		})
 	}

@@ -17,9 +17,9 @@ func TestRunWritesMarkdownFile(t *testing.T) {
 
 	options := app.DefaultOptions()
 	options.TargetDir = projectDir
-	options.Title = "A custom title"
-	options.OutputDir = outputDir
-	options.OutputBaseName = "checklist"
+	options.Display.Title = "A custom title"
+	options.Output.Dir = outputDir
+	options.Output.BaseName = "checklist"
 
 	if err := app.Run(options, &bytes.Buffer{}); err != nil {
 		t.Fatalf("Run() error = %v", err)
@@ -95,8 +95,8 @@ func TestRunSortsDirectoryEntries(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			options := app.DefaultOptions()
 			options.TargetDir = projectDir
-			options.Sort = test.order
-			options.Stdout = true
+			options.Display.Sort = test.order
+			options.Output.Stdout = true
 
 			var stdout bytes.Buffer
 			if err := app.Run(options, &stdout); err != nil {
@@ -115,10 +115,10 @@ func TestRunWritesHTMLFile(t *testing.T) {
 
 	options := app.DefaultOptions()
 	options.TargetDir = projectDir
-	options.Title = "A custom title"
-	options.OutputDir = outputDir
-	options.OutputBaseName = "checklist"
-	options.Format = app.FormatHTML
+	options.Display.Title = "A custom title"
+	options.Output.Dir = outputDir
+	options.Output.BaseName = "checklist"
+	options.Output.Format = app.FormatHTML
 
 	if err := app.Run(options, &bytes.Buffer{}); err != nil {
 		t.Fatalf("Run() error = %v", err)
@@ -149,10 +149,10 @@ func TestRunWritesBothFormats(t *testing.T) {
 
 	options := app.DefaultOptions()
 	options.TargetDir = projectDir
-	options.Title = "A custom title"
-	options.OutputDir = outputDir
-	options.OutputBaseName = "checklist"
-	options.Format = app.FormatBoth
+	options.Display.Title = "A custom title"
+	options.Output.Dir = outputDir
+	options.Output.BaseName = "checklist"
+	options.Output.Format = app.FormatBoth
 
 	if err := app.Run(options, &bytes.Buffer{}); err != nil {
 		t.Fatalf("Run() error = %v", err)
@@ -188,9 +188,9 @@ func TestRunUsesDirectoryNameAsDefaultTitle(t *testing.T) {
 
 	options := app.DefaultOptions()
 	options.TargetDir = projectDir
-	options.OutputDir = outputDir
-	options.OutputBaseName = "ignored-in-stdout-mode"
-	options.Stdout = true
+	options.Output.Dir = outputDir
+	options.Output.BaseName = "ignored-in-stdout-mode"
+	options.Output.Stdout = true
 
 	var stdout bytes.Buffer
 	if err := app.Run(options, &stdout); err != nil {
@@ -234,7 +234,7 @@ func TestRunDoesNotOverwriteExistingFileByDefault(t *testing.T) {
 
 	options := app.DefaultOptions()
 	options.TargetDir = projectDir
-	options.OutputDir = outputDir
+	options.Output.Dir = outputDir
 
 	err := app.Run(options, &bytes.Buffer{})
 	if err == nil {
@@ -256,7 +256,7 @@ func TestRunWrapsStdoutWriteError(t *testing.T) {
 
 	options := app.DefaultOptions()
 	options.TargetDir = projectDir
-	options.Stdout = true
+	options.Output.Stdout = true
 
 	err := app.Run(options, failingWriter{err: writeErr})
 	if !errors.Is(err, writeErr) {
