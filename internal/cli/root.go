@@ -130,24 +130,25 @@ func printFlagGroup(
 			continue
 		}
 
-		shorthand := ""
+		shorthand := "    "
 		if flag.Shorthand != "" {
 			shorthand = "-" + flag.Shorthand + ", "
 		}
 
-		valueType := ""
-		if flag.Value.Type() != "bool" {
-			valueType = " " + flag.Value.Type()
+		// The value name is the `backquoted` word in the usage text if there
+		// is one, otherwise the flag's type ("int", "md|html|both", ...).
+		valueName, usage := pflag.UnquoteUsage(flag)
+		if valueName != "" {
+			valueName = " " + valueName
 		}
 
 		defaultValue := ""
-		if flag.DefValue != "" &&
-			(flag.Value.Type() != "bool" || flag.DefValue != "false") {
+		if flag.DefValue != "" && flag.DefValue != "false" && flag.DefValue != "[]" {
 			defaultValue = " (default " + flag.DefValue + ")"
 		}
 
 		fmt.Fprintf(w, "  %s--%s%s\t%s%s\n",
-			shorthand, flag.Name, valueType, flag.Usage, defaultValue)
+			shorthand, flag.Name, valueName, usage, defaultValue)
 	}
 
 	_ = w.Flush()
