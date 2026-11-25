@@ -15,6 +15,26 @@ import (
 
 // run scans the target, renders the requested output, and writes it to stdout or files.
 func Run(options Options, stdout io.Writer) error {
+	// Validate options and resolve output file paths before scanning the target directory.
+	extensions, err := outputExtensions(options.Output.Format)
+	if err != nil {
+		return err
+	}
+
+	if !options.Output.Stdout {
+		_, err := output.ResolveTargets(
+			options.Output.Dir,
+			options.Output.BaseName,
+			options.Output.Overwrite,
+			extensions,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	fmt.Print("Scanning directory: ", options.TargetDir, "\n")
+
 	root, err := scanner.ScanWithOptions(options.TargetDir, scanner.Options{
 		MaxDepth:     options.Scan.Depth,
 		SkipSymlinks: options.Scan.SkipSymlinks,
@@ -131,6 +151,20 @@ func renderOutputs(root *tree.Node, options Options) ([]output.File, error) {
 
 	default:
 		return nil, fmt.Errorf("unsupported output format: %q", options.Output.Format)
+	}
+}
+
+// outputExtensions returns the file extensions for a given output format.
+func outputExtensions(format OutputFormat) ([]string, error) {
+	switch format {
+	case FormatMarkdown:
+		return []string{"md"}, nil
+	case FormatHTML:
+		return []string{"html"}, nil
+	case FormatBoth:
+		return []string{"md", "html"}, nil
+	default:
+		return nil, fmt.Errorf("unsupported output format: %q", format)
 	}
 }
 

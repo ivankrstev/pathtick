@@ -15,6 +15,63 @@ type File struct {
 	Data      []byte
 }
 
+// ResolveTargets validates and resolves output file paths without creating them.
+func ResolveTargets(
+	outputDir string,
+	baseName string,
+	overwrite bool,
+	extensions []string,
+) ([]string, error) {
+	if len(extensions) == 0 {
+		return nil, errors.New("no output files specified")
+	}
+
+	if outputDir == "" {
+		return nil, errors.New("output directory must not be empty")
+	}
+
+	if baseName == "" || baseName == "." || baseName == ".." ||
+		filepath.Base(baseName) != baseName {
+		return nil, fmt.Errorf("invalid output file name %q", baseName)
+	}
+
+	targets := make([]string, 0, len(extensions))
+	seenTargets := make(map[string]struct{}, len(extensions))
+
+	for _, ext := range extensions {
+		extension := strings.TrimPrefix(ext, ".")
+
+		if extension == "" || filepath.Base(extension) != extension {
+			return nil, fmt.Errorf("invalid output file extension %q", ext)
+		}
+
+		path := filepath.Join(outputDir, baseName+"."+extension)
+
+		if _, exists := seenTargets[path]; exists {
+			return nil, fmt.Errorf("duplicate output file %q", path)
+		}
+		seenTargets[path] = struct{}{}
+
+		if !overwrite {
+			_, err := os.Lstat(path)
+
+			switch {
+			case err == nil:
+				return nil, fmt.Errorf(
+					"output file %q already exists; use --overwrite to replace it",
+					path,
+				)
+			case !errors.Is(err, os.ErrNotExist):
+				return nil, fmt.Errorf("check output file %q: %w", path, err)
+			}
+		}
+
+		targets = append(targets, path)
+	}
+
+	return targets, nil
+}
+
 // WriteFiles writes the rendered files, refusing to replace existing files unless overwrite is true.
 func WriteFiles(
 	outputDir string,
@@ -25,43 +82,22 @@ func WriteFiles(
 	if len(outputs) == 0 {
 		return errors.New("no output files to write")
 	}
-	if outputDir == "" {
-		return errors.New("output directory must not be empty")
+
+	extensions := make([]string, len(outputs))
+	for index, output := range outputs {
+		extensions[index] = output.Extension
 	}
-	if baseName == "" || baseName == "." || baseName == ".." || filepath.Base(baseName) != baseName {
-		return fmt.Errorf("invalid output file name %q", baseName)
+
+	// Validates the names and checks for conflicts before anything is created,
+	// so a problem never leaves a new directory or partial output behind.
+	// targets[i] belongs to outputs[i].
+	targets, err := ResolveTargets(outputDir, baseName, overwrite, extensions)
+	if err != nil {
+		return err
 	}
 
 	if err := os.MkdirAll(outputDir, 0o755); err != nil {
 		return fmt.Errorf("create output directory %q: %w", outputDir, err)
-	}
-
-	targets := make([]string, 0, len(outputs))
-	seenTargets := make(map[string]struct{}, len(outputs))
-
-	for _, output := range outputs {
-		extension := strings.TrimPrefix(output.Extension, ".")
-		if extension == "" || filepath.Base(extension) != extension {
-			return fmt.Errorf("invalid output file extension %q", output.Extension)
-		}
-
-		path := filepath.Join(outputDir, baseName+"."+extension)
-		if _, exists := seenTargets[path]; exists {
-			return fmt.Errorf("duplicate output file %q", path)
-		}
-		seenTargets[path] = struct{}{}
-
-		if !overwrite {
-			_, err := os.Lstat(path)
-			switch {
-			case err == nil:
-				return fmt.Errorf("output file %q already exists; use --overwrite to replace it", path)
-			case !errors.Is(err, os.ErrNotExist):
-				return fmt.Errorf("check output file %q: %w", path, err)
-			}
-		}
-
-		targets = append(targets, path)
 	}
 
 	createdPaths := make([]string, 0, len(targets))
