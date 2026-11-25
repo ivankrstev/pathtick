@@ -16,6 +16,10 @@ import (
 // run scans the target, renders the requested output, and writes it to stdout or files.
 func Run(options Options, stdout io.Writer) error {
 	// Validate options and resolve output file paths before scanning the target directory.
+	if err := scanner.ValidateTargetDir(options.TargetDir); err != nil {
+		return err
+	}
+
 	extensions, err := outputExtensions(options.Output.Format)
 	if err != nil {
 		return err
@@ -33,8 +37,7 @@ func Run(options Options, stdout io.Writer) error {
 		}
 	}
 
-	fmt.Print("Scanning directory: ", options.TargetDir, "\n")
-
+	// Scan the target directory and build a tree of its entries.
 	root, err := scanner.ScanWithOptions(options.TargetDir, scanner.Options{
 		MaxDepth:     options.Scan.Depth,
 		SkipSymlinks: options.Scan.SkipSymlinks,
@@ -43,6 +46,7 @@ func Run(options Options, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
+	// Sort the tree according to the requested order.
 	if err := sortTree(root, options.Display.Sort); err != nil {
 		return err
 	}

@@ -64,27 +64,45 @@ type Options struct {
 	SkipHidden   bool
 }
 
+// ValidateTargetDir checks that targetDir is an existing directory without
+// reading its entries. It applies the same rule as ScanWithOptions.
+func ValidateTargetDir(targetDir string) error {
+	_, err := resolveTargetDir(targetDir)
+	return err
+}
+
+// resolveTargetDir returns targetDir as an absolute path, after checking that
+// it exists and is a directory. Symlinks to directories are accepted.
+func resolveTargetDir(targetDir string) (string, error) {
+	if targetDir == "" {
+		return "", fmt.Errorf("target directory must not be empty")
+	}
+
+	absolutePath, err := filepath.Abs(targetDir)
+	if err != nil {
+		return "", newScanError("cannot resolve target directory", targetDir, err)
+	}
+
+	info, err := os.Stat(absolutePath)
+	if err != nil {
+		return "", newScanError("cannot access target directory", absolutePath, err)
+	}
+	if !info.IsDir() {
+		return "", fmt.Errorf("target %q is not a directory", absolutePath)
+	}
+
+	return absolutePath, nil
+}
+
 // ScanWithOptions builds a tree rooted at targetDir using the given traversal options.
 func ScanWithOptions(targetDir string, options Options) (*tree.Node, error) {
 	if options.MaxDepth < -1 {
 		return nil, fmt.Errorf("maximum depth must be -1 or greater, got %d", options.MaxDepth)
 	}
 
-	if targetDir == "" {
-		return nil, fmt.Errorf("target directory must not be empty")
-	}
-
-	absolutePath, err := filepath.Abs(targetDir)
+	absolutePath, err := resolveTargetDir(targetDir)
 	if err != nil {
-		return nil, newScanError("cannot resolve target directory", targetDir, err)
-	}
-
-	info, err := os.Stat(absolutePath)
-	if err != nil {
-		return nil, newScanError("cannot access target directory", absolutePath, err)
-	}
-	if !info.IsDir() {
-		return nil, fmt.Errorf("target %q is not a directory", absolutePath)
+		return nil, err
 	}
 
 	children, err := scanChildren(absolutePath, ".", 0, options)
